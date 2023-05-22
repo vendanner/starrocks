@@ -90,7 +90,7 @@ public class HashJoinCostModel {
         JoinExecMode execMode = deriveJoinExecMode();
         double buildCost;
         double probeCost;
-        // leftOutput/rightOutput = outputRowCount * sum(AverageRowSize)
+        // leftOutput/rightOutput = outputRowCount * sum(AverageRowSize )
         double leftOutput = leftStatistics.getOutputSize(context.getChildOutputColumns(0));
         double rightOutput = rightStatistics.getOutputSize(context.getChildOutputColumns(1));
         int parallelFactor = Math.max(ConnectContext.get().getAliveBackendNumber(),
