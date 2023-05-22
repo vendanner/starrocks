@@ -186,6 +186,7 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
 
         Statistics statistics = context.getStatistics();
         if (null != predicate) {
+            // 谓词比较会减少 row count 以及更新predicate 中对应的 ColumnStatistics
             statistics = estimateStatistics(ImmutableList.of(predicate), statistics);
         }
 
@@ -241,7 +242,7 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
                                      Collection<Long> selectedPartitionIds,
                                      Map<ColumnRefOperator, Column> colRefToColumnMetaMap) {
         Preconditions.checkState(context.arity() == 0);
-        // 1. get table row count
+        // 1. get table row count => 只获取选中的分区数据
         long tableRowCount = getTableRowCount(table, node);
         // 2. get required columns statistics
         Statistics.Builder builder = estimateScanColumns(table, colRefToColumnMetaMap);
@@ -249,6 +250,7 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
             builder.setTableRowCountMayInaccurate(true);
         }
         // 3. deal with column statistics for partition prune
+        // 分区字段的统计信息需要调整(adjustPartitionStatistic)，因为有分区裁剪的，只要在范围内的分区里找即可
         OlapTable olapTable = (OlapTable) table;
         ColumnStatistic partitionStatistic = adjustPartitionStatistic(selectedPartitionIds, olapTable);
         if (partitionStatistic != null) {
@@ -264,6 +266,7 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
         builder.setOutputRowCount(tableRowCount);
         // 4. estimate cardinality
         context.setStatistics(builder.build());
+        // visitOperator 包含字段裁剪 => 谓词下推
         return visitOperator(node, context);
     }
 
@@ -566,6 +569,13 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
         return null;
     }
 
+    /**
+     * table ROW count = 各个分区 row count 之和
+     *  分区数 => 优化器规则转换时，会有分区裁剪规则，此时设置operation partition ids(OptOlapPartitionPruner)
+     * @param table
+     * @param node
+     * @return
+     */
     private long getTableRowCount(Table table, Operator node) {
         if (table.isNativeTableOrMaterializedView()) {
             OlapTable olapTable = (OlapTable) table;
@@ -574,6 +584,7 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
                     node.getOpType() == OperatorType.PHYSICAL_STREAM_SCAN) {
                 return 1;
             } else if (node.isLogical()) {
+                // 获取分区数
                 LogicalOlapScanOperator olapScanOperator = (LogicalOlapScanOperator) node;
                 selectedPartitions = olapScanOperator.getSelectedPartitionId().stream().map(
                         olapTable::getPartition).collect(Collectors.toList());
@@ -583,7 +594,7 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
                         olapTable::getPartition).collect(Collectors.toList());
             }
             long rowCount = 0;
-
+            // BasicStatsMeta => db meta cache
             BasicStatsMeta basicStatsMeta = GlobalStateMgr.getCurrentAnalyzeMgr().getBasicStatsMetaMap().get(table.getId());
             if (basicStatsMeta != null && basicStatsMeta.getType().equals(StatsConstants.AnalyzeType.FULL)) {
 
@@ -594,6 +605,9 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
                 // The purpose of this is to make the statistics of the number of rows more accurate.
                 // For example, a large amount of data LOAD may cause the number of rows to change greatly.
                 // This leads to very inaccurate row counts.
+                // 按道理直接获取partition row 即可
+                // 但为了防止查询前导入大量数据(full 统计有延迟)，导致cost 计算有误差
+                // 将表级别的更新行数均匀分布到分区边界(basicStatsMeta.getUpdateRows() / partitionCountModifiedAfterLastAnalyze)，来计算 cost(更准确一些)
                 int partitionCountModifiedAfterLastAnalyze = 0;
                 for (Partition partition : table.getPartitions()) {
                     LocalDateTime updateDatetime = StatisticUtils.getPartitionLastUpdateTime(partition);
@@ -686,6 +700,7 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
 
         //Update the statistics of the GroupBy column
         Map<ColumnRefOperator, ColumnStatistic> groupStatisticsMap = new HashMap<>();
+        // GroupBy 计算row count，并从inputStatistics 获取groupby key ColumnStatistic
         double rowCount = computeGroupByStatistics(groupBys, inputStatistics, groupStatisticsMap);
 
         //Update Node Statistics
@@ -703,6 +718,19 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
         return visitOperator(node, context);
     }
 
+    /**
+     * 计算GroupBy row count
+     * 1、从inputStatistics 获取groupby keys 的ColumnStatistic
+     * 2、计算group by的 row count
+     *    inputStatistics.getOutputRowCount() * 0.5 * 1.05 * 1.05 ...
+     *    or groupByColumnStatics.getDistinctValuesCount() * Math.max(1, Math.pow(0.75, index))
+     *    无论哪种方式，计算后的 row count 必须 <= inputStatistics.getOutputRowCount
+     *
+     * @param groupBys
+     * @param inputStatistics
+     * @param groupStatisticsMap
+     * @return
+     */
     public static double computeGroupByStatistics(List<ColumnRefOperator> groupBys, Statistics inputStatistics,
                                                   Map<ColumnRefOperator, ColumnStatistic> groupStatisticsMap) {
         for (ColumnRefOperator groupByColumn : groupBys) {
@@ -786,9 +814,10 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
         crossBuilder.addColumnStatisticsFromOtherStatistic(rightStatistics, context.getChildOutputColumns(1));
         double leftRowCount = leftStatistics.getOutputRowCount();
         double rightRowCount = rightStatistics.getOutputRowCount();
+        // crossRowCount 笛卡尔积的情况下，join 产生的最多数据行数
         double crossRowCount = StatisticUtils.multiplyRowCount(leftRowCount, rightRowCount);
         crossBuilder.setOutputRowCount(crossRowCount);
-
+        // eqOnPredicates => on 条件时等于 且 两侧都是字段而不是常量
         List<BinaryPredicateOperator> eqOnPredicates = JoinHelper.getEqualsPredicate(leftStatistics.getUsedColumns(),
                 rightStatistics.getUsedColumns(), allJoinPredicate);
 
@@ -812,6 +841,7 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
 
         Statistics innerJoinStats;
         if (innerRowCount == -1) {
+            // eqOnPredicates 裁剪
             innerJoinStats = estimateInnerJoinStatistics(crossJoinStats, eqOnPredicates);
             innerRowCount = innerJoinStats.getOutputRowCount();
         } else {
@@ -1092,6 +1122,7 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
             return statistics;
         }
         if (ConnectContext.get().getSessionVariable().isUseCorrelatedJoinEstimate()) {
+            // row count * 1/distinct value * 0.9、更新 column statistics
             return estimatedInnerJoinStatisticsAssumeCorrelated(statistics, eqOnPredicates);
         } else {
             return Statistics.buildFrom(statistics)
@@ -1200,6 +1231,7 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
 
     public Statistics estimateByEqOnPredicates(Statistics statistics, BinaryPredicateOperator divingPredicate,
                                                Collection<BinaryPredicateOperator> remainingEqOnPredicate) {
+        // 谓词下推裁剪，on 条件 => 会更新 row count 以及column statistics
         Statistics estimateStatistics = estimateStatistics(ImmutableList.of(divingPredicate), statistics);
         for (BinaryPredicateOperator ignored : remainingEqOnPredicate) {
             estimateStatistics = estimateByAuxiliaryPredicates(estimateStatistics);
@@ -1303,6 +1335,13 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
         return visitOperator(context.getOp(), context);
     }
 
+    /**
+     * PredicateStatisticsCalculator.statisticsCalculate => 谓词下推裁剪
+     *
+     * @param predicateList
+     * @param statistics
+     * @return
+     */
     public Statistics estimateStatistics(List<ScalarOperator> predicateList, Statistics statistics) {
         if (predicateList.isEmpty()) {
             return statistics;
@@ -1310,6 +1349,7 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
 
         Statistics result = statistics;
         for (ScalarOperator predicate : predicateList) {
+            // 谓词下推裁剪 更新row count 以及对应 ColumnStatis 都应的最大、最小值
             result = PredicateStatisticsCalculator.statisticsCalculate(predicate, statistics);
         }
 

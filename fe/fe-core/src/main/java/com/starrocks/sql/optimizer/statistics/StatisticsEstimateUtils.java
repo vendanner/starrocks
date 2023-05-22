@@ -46,6 +46,13 @@ public class StatisticsEstimateUtils {
         return builder.build();
     }
 
+    /**
+     * 调整columnStatistic的DistinctValuesCount，应 <= rowCount
+     *
+     * @param statistics
+     * @param rowCount
+     * @return
+     */
     public static Statistics adjustStatisticsByRowCount(Statistics statistics, double rowCount) {
         // Do not compute predicate statistics if column statistics is unknown or table row count may inaccurate
         if (statistics.getColumnStatistics().values().stream().anyMatch(ColumnStatistic::isUnknown) ||

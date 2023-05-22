@@ -187,6 +187,7 @@ public class RuleSet {
             StreamAggregateImplementationRule.getInstance()
     );
 
+    // implement Rules => logical to physical
     private final List<Rule> implementRules = Lists.newArrayList(ALL_IMPLEMENT_RULES);
 
     private final List<Rule> transformRules = Lists.newArrayList();

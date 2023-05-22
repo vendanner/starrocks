@@ -207,6 +207,17 @@ public class PredicateStatisticsCalculator {
             return StatisticsEstimateUtils.adjustStatisticsByRowCount(builder.build(), rowCount);
         }
 
+        /**
+         * where 条件比较，参考：com.starrocks.sql.optimizer.statistics.PredicateStatisticsCalculatorTest#testDateBinaryPredicate()
+         * id_date >= 2021-05-01
+         * 一、从 predicate 获取左右两侧的 Operator
+         * 二、getExpressionStatistic 函数(ExpressionStatisticCalculator)得到左右两侧的 ColumnStatistic
+         * 三、BinaryPredicateStatisticCalculator.estimateColumnToConstantComparison 更新ColumnStatistic(最大、最小值)、row count
+         *
+         * @param predicate
+         * @param context
+         * @return
+         */
         @Override
         public Statistics visitBinaryPredicate(BinaryPredicateOperator predicate, Void context) {
             if (!checkNeedEvalEstimate(predicate)) {
@@ -224,8 +235,8 @@ public class PredicateStatisticsCalculator {
             leftChild = getChildForCastOperator(leftChild);
             rightChild = getChildForCastOperator(rightChild);
             // compute left and right column statistics
-            ColumnStatistic leftColumnStatistic = getExpressionStatistic(leftChild);
-            ColumnStatistic rightColumnStatistic = getExpressionStatistic(rightChild);
+            ColumnStatistic leftColumnStatistic = getExpressionStatistic(leftChild);    // ColumnRefOperator 列，直接从statistics 获取字段统计信息
+            ColumnStatistic rightColumnStatistic = getExpressionStatistic(rightChild);  // ConStantOperator 常量，直接将常量构造成ColumnStatistic (visitConstant)
             // do not use NaN to estimate predicate
             if (leftColumnStatistic.hasNaNValue()) {
                 leftColumnStatistic =
@@ -244,6 +255,7 @@ public class PredicateStatisticsCalculator {
                 leftChildOpt = leftChild.isColumnRef() ? Optional.of((ColumnRefOperator) leftChild) : Optional.empty();
 
                 if (rightChild.isConstant()) {
+                    // 右侧表达式是常量
                     Optional<ConstantOperator> constantOperator;
                     if (rightChild.isConstantRef()) {
                         constantOperator = Optional.of((ConstantOperator) rightChild);

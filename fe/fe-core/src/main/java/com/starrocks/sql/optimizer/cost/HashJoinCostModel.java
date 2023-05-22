@@ -81,10 +81,16 @@ public class HashJoinCostModel {
         this.joinStatistics = joinStatistics;
     }
 
+    /**
+     * 取决于左右侧的 row count 和当前 node 的 row count
+     * 复杂在于，hash join 不同的执行方式，cost 略有差异 =>
+     * @return
+     */
     public double getCpuCost() {
         JoinExecMode execMode = deriveJoinExecMode();
         double buildCost;
         double probeCost;
+        // leftOutput/rightOutput = outputRowCount * sum(AverageRowSize)
         double leftOutput = leftStatistics.getOutputSize(context.getChildOutputColumns(0));
         double rightOutput = rightStatistics.getOutputSize(context.getChildOutputColumns(1));
         int parallelFactor = Math.max(ConnectContext.get().getAliveBackendNumber(),
@@ -95,6 +101,7 @@ public class HashJoinCostModel {
                 probeCost = leftOutput * getAvgProbeCost();
                 break;
             case SHUFFLE:
+                // 一个hash map 被分解乘多个小hash map
                 buildCost = rightOutput / parallelFactor;
                 probeCost = leftOutput * getAvgProbeCost();
                 break;
@@ -108,8 +115,13 @@ public class HashJoinCostModel {
         return joinCost;
     }
 
+    /**
+     * mem cost 取决于 右表的大小(build hash map)
+     * @return
+     */
     public double getMemCost() {
         JoinExecMode execMode = deriveJoinExecMode();
+        // rightOutput = outputRowCount * sum(AverageRowSize)
         double rightOutput = rightStatistics.getOutputSize(context.getChildOutputColumns(1));
         double memCost;
         int beNum = Math.max(1, ConnectContext.get().getAliveBackendNumber());
@@ -128,7 +140,7 @@ public class HashJoinCostModel {
 
         double cachePenaltyFactor;
         int parallelFactor = Math.max(ConnectContext.get().getAliveBackendNumber(),
-                ConnectContext.get().getSessionVariable().getDegreeOfParallelism()) * 2;
+                ConnectContext.get().getSessionVariable().getDegreeOfParallelism()) * 2;  // *2 why？
         double mapSize = Math.min(1, keySize) * rightStatistics.getOutputRowCount();
 
         if (JoinExecMode.BROADCAST == execMode) {

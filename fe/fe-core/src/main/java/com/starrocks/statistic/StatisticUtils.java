@@ -287,6 +287,12 @@ public class StatisticUtils {
         return result;
     }
 
+    /**
+     * result = left * right，最大不超过 StatisticsEstimateCoefficient.MAXIMUM_OUTPUT_SIZE = 1.0E308
+     * @param left
+     * @param right
+     * @return
+     */
     public static double multiplyOutputSize(double left, double right) {
         left = Math.min(left, StatisticsEstimateCoefficient.MAXIMUM_OUTPUT_SIZE);
         right = Math.min(right, StatisticsEstimateCoefficient.MAXIMUM_OUTPUT_SIZE);

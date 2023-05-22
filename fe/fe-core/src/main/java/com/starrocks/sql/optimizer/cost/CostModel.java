@@ -404,8 +404,10 @@ public class CostModel {
 
             double leftSize = leftStatistics.getOutputSize(context.getChildOutputColumns(0));
             double rightSize = rightStatistics.getOutputSize(context.getChildOutputColumns(1));
+            // cpuCost = leftSize * rightSize
             double cpuCost = StatisticUtils.multiplyOutputSize(StatisticUtils.multiplyOutputSize(leftSize, rightSize),
                     StatisticsEstimateCoefficient.CROSS_JOIN_COST_PENALTY);
+            // memCost = rightSize * 200
             double memCost = StatisticUtils.multiplyOutputSize(rightSize,
                     StatisticsEstimateCoefficient.CROSS_JOIN_COST_PENALTY * 100D);
 

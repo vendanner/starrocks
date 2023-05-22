@@ -222,6 +222,17 @@ public class BinaryPredicateStatisticCalculator {
         }
     }
 
+    /**
+     * columnRefOperator >= constant(id_date >= '2021-05-01')
+     * constant 构造成 StatisticRangeValues 去比较
+     *
+     * @param columnRefOperator 列
+     * @param columnStatistic 列的统计信息
+     * @param constant   常量(列比较的阈值)
+     * @param statistics 当前Context的 所有的统计信息
+     * @param binaryType 比较类型 (>= 等等)
+     * @return
+     */
     private static Statistics estimateColumnGreaterThanConstant(Optional<ColumnRefOperator> columnRefOperator,
                                                                 ColumnStatistic columnStatistic,
                                                                 Optional<ConstantOperator> constant,
@@ -240,6 +251,8 @@ public class BinaryPredicateStatisticCalculator {
             } else {
                 predicateRange = new StatisticRangeValues(NEGATIVE_INFINITY, POSITIVE_INFINITY, NaN);
             }
+            // 为啥StatisticRangeValues 的high 设置为POSITIVE_INFINITY(无穷大)？
+            // 这里 >= 比较，那么常量的这边的取值范围 => (常量，∞)
             return estimatePredicateRange(columnRefOperator, columnStatistic, predicateRange, statistics);
 
         } else {
@@ -269,18 +282,21 @@ public class BinaryPredicateStatisticCalculator {
                                                               Statistics statistics) {
         switch (predicate.getBinaryType()) {
             case EQ:
+                // 等值判断
                 return estimateColumnEqualToColumn(leftColumn, leftColumnStatistic,
                         rightColumn, rightColumnStatistic, statistics, false);
             case EQ_FOR_NULL:
                 return estimateColumnEqualToColumn(leftColumn, leftColumnStatistic,
                         rightColumn, rightColumnStatistic, statistics, true);
             case NE:
+                // 不等值判断 !=
                 return estimateColumnNotEqualToColumn(leftColumnStatistic, rightColumnStatistic, statistics);
             case LE:
             case GE:
             case LT:
             case GT:
-                // 0.5 is unknown filter coefficient
+                // 0.5 is unknown filter coefficient => row count 直接乘以系数 0.5
+                // 不等值判断 <=、>=、<、>
                 double rowCount = statistics.getOutputRowCount() * 0.5;
                 return Statistics.buildFrom(statistics).setOutputRowCount(rowCount).build();
             default:
@@ -288,6 +304,20 @@ public class BinaryPredicateStatisticCalculator {
         }
     }
 
+    /**
+     * 两个列 Equal 比较的 基数估计
+     * 1、更新 row count：row count * selectivity(1/x=DistinctValuesCount) => equal 只有一个值
+     * 2、新建 column Statistics 最大、小值 => 两个列交集
+     * 3、更新 Statistics row count 以及column Statistics(步骤2生成的Statistics)
+     *
+     * @param leftColumn
+     * @param leftColumnStatistic
+     * @param rightColumn
+     * @param rightColumnStatistic
+     * @param statistics
+     * @param isEqualForNull
+     * @return
+     */
     public static Statistics estimateColumnEqualToColumn(ScalarOperator leftColumn,
                                                          ColumnStatistic leftColumnStatistic,
                                                          ScalarOperator rightColumn,
@@ -338,6 +368,15 @@ public class BinaryPredicateStatisticCalculator {
         return builder.build();
     }
 
+    /**
+     * 不等于条件裁剪 - row count
+     *   有unknown 列 直接乘系数 0.8
+     *   否则：row count * (1 - 1/Math.max(leftDistinctValuesCount, rightDistinctValuesCount)) => 类似等值裁剪
+     * @param leftColumn
+     * @param rightColumn
+     * @param statistics
+     * @return
+     */
     public static Statistics estimateColumnNotEqualToColumn(
             ColumnStatistic leftColumn,
             ColumnStatistic rightColumn,
@@ -357,6 +396,19 @@ public class BinaryPredicateStatisticCalculator {
         return Statistics.buildFrom(statistics).setOutputRowCount(rowCount).build();
     }
 
+    /**
+     * 如何得到两个Operator 比较后的统计信息？
+     * 一、取交集 intersectRange
+     * 二、得到 列选中的因子 predicateFactor = intersectRange/columnRange
+     * 三、更新row count = 当前row count * predicateFactor
+     * 四、得到新的 列统计信息 newEstimateColumnStatistics(更新最大、最小值)
+     *
+     * @param columnRefOperator 列
+     * @param columnStatistic 列统计信息
+     * @param predicateRange 常量构造的 StatisticRangeValues
+     * @param statistics 当前Context 的所有统计信息
+     * @return
+     */
     public static Statistics estimatePredicateRange(Optional<ColumnRefOperator> columnRefOperator,
                                                     ColumnStatistic columnStatistic,
                                                     StatisticRangeValues predicateRange,
@@ -373,7 +425,7 @@ public class BinaryPredicateStatisticCalculator {
         // value of the string type. we assume that 'xxx' is exist in the column range,
         // so the predicate factor :
         //          pf = 1.0 / distinct_val.
-        double predicateFactor = columnRange.overlapPercentWith(intersectRange);
+        double predicateFactor = columnRange.overlapPercentWith(intersectRange); // overlapPercentWith => 正常情况(intersectRange/distinct_val)
         double rowCount = statistics.getOutputRowCount() * (1 - columnStatistic.getNullsFraction()) * predicateFactor;
 
         ColumnStatistic newEstimateColumnStatistics = ColumnStatistic.builder().
