@@ -300,6 +300,7 @@ public class ExpressionAnalyzer {
             analyzeHighOrderFunction(visitor, expression, scope);
         } else {
             for (Expr expr : expression.getChildren()) {
+                // children 可能就是slotRef => 字段
                 bottomUpAnalyze(visitor, expr, scope);
             }
         }
@@ -358,9 +359,18 @@ public class ExpressionAnalyzer {
             return null;
         }
 
+        /**
+         * 解析列
+         *
+         * @param node
+         * @param scope
+         * @return
+         */
         @Override
         public Void visitSlot(SlotRef node, Scope scope) {
+            // 从scope 中获取 field，在解析table 时，已将fileds 设置进 scope => Scope scope = new Scope(RelationId.of(node), new RelationFields(fields.build()));
             ResolvedField resolvedField = scope.resolveField(node);
+            // binder column
             node.setType(resolvedField.getField().getType());
             node.setTblName(resolvedField.getField().getRelationAlias());
             // help to get nullable info in Analyzer phase
@@ -891,6 +901,13 @@ public class ExpressionAnalyzer {
             return null;
         }
 
+        /**
+         * 解析 function
+         *
+         * @param node
+         * @param scope
+         * @return
+         */
         @Override
         public Void visitFunctionCall(FunctionCallExpr node, Scope scope) {
             Type[] argumentTypes = node.getChildren().stream().map(Expr::getType).toArray(Type[]::new);
@@ -1006,6 +1023,7 @@ public class ExpressionAnalyzer {
                 fn = getArrayGenerateFunction(node);
                 argumentTypes = node.getChildren().stream().map(Expr::getType).toArray(Type[]::new);
             } else {
+                // 内置 function
                 fn = Expr.getBuiltinFunction(fnName, argumentTypes, Function.CompareMode.IS_NONSTRICT_SUPERTYPE_OF);
             }
 
@@ -1024,7 +1042,7 @@ public class ExpressionAnalyzer {
             if (fn instanceof TableFunction) {
                 throw new SemanticException("Table function cannot be used in expression", node.getPos());
             }
-
+            // 校验函数参数类型
             for (int i = 0; i < fn.getNumArgs(); i++) {
                 if (!argumentTypes[i].matchesType(fn.getArgs()[i]) &&
                         !Type.canCastToAsFunctionParameter(argumentTypes[i], fn.getArgs()[i])) {
@@ -1047,7 +1065,7 @@ public class ExpressionAnalyzer {
                     }
                 }
             }
-
+            // binder function及返回值
             node.setFn(fn);
             node.setType(fn.getReturnType());
             FunctionAnalyzer.analyze(node);

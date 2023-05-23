@@ -249,7 +249,7 @@ public class SelectAnalyzer {
                 } else {
                     name = item.getAlias() == null ? AstToStringBuilder.toString(item.getExpr()) : item.getAlias();
                 }
-
+                // 解析表达式(function)
                 analyzeExpression(item.getExpr(), analyzeState, scope);
                 outputExpressionBuilder.add(item.getExpr());
 

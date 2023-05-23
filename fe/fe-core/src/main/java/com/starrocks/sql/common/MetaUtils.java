@@ -125,6 +125,12 @@ public class MetaUtils {
         return table;
     }
 
+    /**
+     * 若 tableName 没包含 catalog、db，则从connectContext 取catalog、db
+     *
+     * @param connectContext
+     * @param tableName
+     */
     public static void normalizationTableName(ConnectContext connectContext, TableName tableName) {
         if (Strings.isNullOrEmpty(tableName.getCatalog())) {
             if (Strings.isNullOrEmpty(connectContext.getCurrentCatalog())) {

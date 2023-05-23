@@ -176,6 +176,15 @@ public class QueryAnalyzer {
             return cteScope;
         }
 
+        /**
+         * 一、先解析 Relation
+         * 二、process(Relation, scope);
+         * 三、最后解析select 字段
+         *
+         * @param selectRelation
+         * @param scope
+         * @return
+         */
         @Override
         public Scope visitSelect(SelectRelation selectRelation, Scope scope) {
             AnalyzeState analyzeState = new AnalyzeState();
@@ -205,6 +214,20 @@ public class QueryAnalyzer {
             return analyzeState.getOutputScope();
         }
 
+        /**
+         * 解析 table
+         *  JoinRelation
+         *  TableRelation
+         *      get table metadata
+         *      binder table
+         *  SubqueryRelation
+         *      aliasSet.add(relation.getResolveTableName());
+         *
+         * @param relation
+         * @param scope
+         * @param aliasSet
+         * @return
+         */
         private Relation resolveTableRef(Relation relation, Scope scope, Set<TableName> aliasSet) {
             if (relation instanceof JoinRelation) {
                 JoinRelation join = (JoinRelation) relation;
@@ -249,6 +272,7 @@ public class QueryAnalyzer {
                     }
                 }
 
+                // table 填充 catalog、db
                 TableName resolveTableName = relation.getResolveTableName();
                 MetaUtils.normalizationTableName(session, resolveTableName);
                 if (aliasSet.contains(resolveTableName)) {
@@ -260,6 +284,7 @@ public class QueryAnalyzer {
                             resolveTableName.getTbl()));
                 }
 
+                // 获取 table metadata
                 Table table = resolveTable(tableRelation.getName());
                 if (table instanceof View) {
                     View view = (View) table;
@@ -296,6 +321,13 @@ public class QueryAnalyzer {
             }
         }
 
+        /**
+         * 获取 table 的column，并构建新的 scope
+         *
+         * @param node
+         * @param outerScope
+         * @return
+         */
         @Override
         public Scope visitTable(TableRelation node, Scope outerScope) {
             TableName tableName = node.getResolveTableName();
@@ -320,7 +352,7 @@ public class QueryAnalyzer {
                 columns.put(field, column);
                 fields.add(field);
             }
-
+            // set columns
             node.setColumns(columns.build());
             String dbName = node.getName().getDb();
 
@@ -339,7 +371,7 @@ public class QueryAnalyzer {
                 hiveMetaStoreTableDumpInfo.setPartColumnNames(hiveTable.getPartitionColumnNames());
                 hiveMetaStoreTableDumpInfo.setDataColumnNames(hiveTable.getDataColumnNames());
             }
-
+            // 构建新的 scope
             Scope scope = new Scope(RelationId.of(node), new RelationFields(fields.build()));
             node.setScope(scope);
             return scope;
@@ -835,6 +867,7 @@ public class QueryAnalyzer {
             Database database = metadataMgr.getDb(catalogName, dbName);
             MetaUtils.checkDbNullAndReport(database, dbName);
 
+            // 根据 (catalogName, dbName, tbName) 从 metadataMgr 获取 Table
             Table table = metadataMgr.getTable(catalogName, dbName, tbName);
             if (table == null) {
                 ErrorReport.reportAnalysisException(ErrorCode.ERR_BAD_TABLE_ERROR, dbName + "." + tbName);
