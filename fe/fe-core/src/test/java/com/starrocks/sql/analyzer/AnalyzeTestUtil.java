@@ -18,6 +18,9 @@ import com.starrocks.qe.ConnectContext;
 import com.starrocks.sql.ast.QueryStatement;
 import com.starrocks.sql.ast.StatementBase;
 import com.starrocks.sql.common.UnsupportedException;
+import com.starrocks.sql.optimizer.base.ColumnRefFactory;
+import com.starrocks.sql.optimizer.transformer.LogicalPlan;
+import com.starrocks.sql.optimizer.transformer.RelationTransformer;
 import com.starrocks.sql.parser.ParsingException;
 import com.starrocks.utframe.StarRocksAssert;
 import com.starrocks.utframe.UtFrameUtils;
@@ -281,6 +284,11 @@ public class AnalyzeTestUtil {
                         com.starrocks.sql.parser.SqlParser.parse(AstToSQLBuilder.toSQL(statementBase),
                                 connectContext.getSessionVariable()).get(0);
                 Analyzer.analyze(viewStatement, connectContext);
+
+                ColumnRefFactory columnRefFactory = new ColumnRefFactory();
+                QueryStatement queryStmt = (QueryStatement) viewStatement;
+                LogicalPlan logicalPlan = new RelationTransformer(columnRefFactory, connectContext)
+                        .transformWithSelectLimit(queryStmt.getQueryRelation());
             }
 
             return statementBase;
