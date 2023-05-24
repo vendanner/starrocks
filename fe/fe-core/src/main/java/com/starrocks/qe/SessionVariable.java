@@ -744,7 +744,7 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
     private boolean enableFilterUnusedColumnsInScanStage = true;
 
     @VariableMgr.VarAttr(name = CBO_MAX_REORDER_NODE_USE_EXHAUSTIVE)
-    private int cboMaxReorderNodeUseExhaustive = 4;
+    private int cboMaxReorderNodeUseExhaustive = 2;
 
     @VariableMgr.VarAttr(name = CBO_MAX_REORDER_NODE, flag = VariableMgr.INVISIBLE)
     private int cboMaxReorderNode = 50;
@@ -774,7 +774,7 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
     private double broadcastRightTableScaleFactor = 10.0;
 
     @VariableMgr.VarAttr(name = NEW_PLANNER_OPTIMIZER_TIMEOUT)
-    private long optimizerExecuteTimeout = 3000;
+    private long optimizerExecuteTimeout = 30000000;
 
     @VariableMgr.VarAttr(name = ENABLE_QUERY_DUMP)
     private boolean enableQueryDump = false;
@@ -877,7 +877,7 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
     private String joinImplementationMode = "auto"; // auto, merge, hash, nestloop
 
     @VariableMgr.VarAttr(name = ENABLE_OPTIMIZER_TRACE_LOG, flag = VariableMgr.INVISIBLE)
-    private boolean enableOptimizerTraceLog = false;
+    private boolean enableOptimizerTraceLog = true;
 
     @VariableMgr.VarAttr(name = ENABLE_QUERY_DEBUG_TRACE, flag = VariableMgr.INVISIBLE)
     private boolean enableQueryDebugTrace = false;
