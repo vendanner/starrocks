@@ -17,7 +17,7 @@ include_directories(
         ../deps/gperftools
         ../deps/include
 )
-include_directories(SYSTEM "/var/local/thirdparty/installed/includ")
+include_directories(SYSTEM "/var/local/thirdparty/installed/include")
 include_directories(SYSTEM "/var/local/thirdparty/installed/gperftools/include")
 
 
