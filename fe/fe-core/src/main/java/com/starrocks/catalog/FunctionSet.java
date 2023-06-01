@@ -621,7 +621,7 @@ public class FunctionSet {
         ArithmeticExpr.initBuiltins(this);
         TableFunction.initBuiltins(this);
         VectorizedBuiltinFunctions.initBuiltins(this);
-        initAggregateBuiltins();
+        initAggregateBuiltins();        // 注册 agg function
     }
 
     public boolean isNotAlwaysNullResultWithNullParamFunctions(String funcName) {
@@ -805,6 +805,7 @@ public class FunctionSet {
                     true, false, true));
 
             // ANY_VALUE
+            // FE端注册 any_value function
             addBuiltin(AggregateFunction.createBuiltin(ANY_VALUE,
                     Lists.newArrayList(t), t, t, true, false, false));
 
