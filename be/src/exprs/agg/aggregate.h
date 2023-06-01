@@ -49,6 +49,7 @@ using ConstAggDataPtr = const uint8_t*;
 // Keyword __restrict is added everywhere AggDataPtr appears, which used to solve the problem of
 // pointer aliasing and improve the performance of auto-vectorization. For better understanding,
 // some micro-benchmark results are listed as follows
+// todo：分析下面这个性能对比 __restrict
 //      1. https://quick-bench.com/q/ZQoR7xloXdKcqLC-rPFLhSuHEf0
 //      2. https://quick-bench.com/q/E5SfW3gn2IjJl4q0YIVMBPW8Ja8
 //      3. https://quick-bench.com/q/yniGOh4CIz6YRGj85HFwu4WoHME
@@ -62,6 +63,7 @@ public:
     // Update the aggregation state
     // columns points to columns containing arguments of aggregation function.
     // row_num is number of row which should be updated.
+    // restrict 关键字分析：https://zhuanlan.zhihu.com/p/349726808
     virtual void update(FunctionContext* ctx, const Column** columns, AggDataPtr __restrict state,
                         size_t row_num) const = 0;
 

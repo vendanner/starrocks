@@ -1629,17 +1629,19 @@ TEST_F(AggregateTest, test_bitmap_intersect_nullable) {
     ASSERT_EQ("1", result_data.get_pool()[0].to_string());
 }
 
+//  T = int16_t, TResult = int16_t
 template <typename T, typename TResult>
 void test_non_deterministic_agg_function(FunctionContext* ctx, const AggregateFunction* func) {
     using ResultColumn = typename ColumnTraits<TResult>::ColumnType;
     using ExpeactedResultColumnType = typename ColumnTraits<T>::ColumnType;
-    auto state = ManagedAggrState::create(ctx, func);
+    auto state = ManagedAggrState::create(ctx, func); // 创建 aggState
     // update input column 1
-    auto result_column1 = ResultColumn::create();
-    ColumnPtr column = gen_input_column1<T>();
+    auto result_column1 = ResultColumn::create(); // 创建对应类型 column => FixedLengthColumn<int16_t>
+    ColumnPtr column = gen_input_column1<T>();    // 创建对应类型 column 并插入数字
     const Column* row_column = column.get();
-    func->update_batch_single_state(ctx, row_column->size(), &row_column, state->state());
-    func->finalize_to_column(ctx, state->state(), result_column1.get());
+    func->update_batch_single_state(ctx, row_column->size(), &row_column,
+                                    state->state());                     // for any_value function state=row_column[0]
+    func->finalize_to_column(ctx, state->state(), result_column1.get()); // 将state 转化为 column
 
     auto expected_column1 = down_cast<const ExpeactedResultColumnType&>(row_column[0]);
     ASSERT_EQ(expected_column1.get_data()[0], result_column1->get_data()[0]);

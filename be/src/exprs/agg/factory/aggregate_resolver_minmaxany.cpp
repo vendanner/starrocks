@@ -40,6 +40,7 @@ void AggregateFuncResolver::register_bitmap() {
             "bitmap_union_count", true, AggregateFactory::MakeBitmapUnionCountAggregateFunction());
 }
 
+// BE端 注册min、max、any_value 函数
 struct MinMaxAnyDispatcher {
     template <LogicalType lt>
     void operator()(AggregateFuncResolver* resolver) {
