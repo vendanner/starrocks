@@ -2058,7 +2058,7 @@ windowFunction
     | name = LAG '(' (expression ignoreNulls? (',' expression)*)? ')' ignoreNulls?
     | name = FIRST_VALUE '(' (expression ignoreNulls? (',' expression)*)? ')' ignoreNulls?
     | name = LAST_VALUE '(' (expression ignoreNulls? (',' expression)*)? ')' ignoreNulls?
-    | name = NTH_VALUE '(' (expression ',' INTEGER_VALUE) ')' direction? (ignoreNulls | respectNulls)?
+    | name = NTH_VALUE '(' (expression ',' INTEGER_VALUE) ')' (FROM direction =(FIRST | LAST))? (respect=(RESPECT | IGNORE) NULLS)?
     ;
 
 whenClause
@@ -2089,14 +2089,6 @@ frameBound
     | UNBOUNDED boundType=FOLLOWING                 #unboundedFrame
     | CURRENT ROW                                   #currentRowBound
     | expression boundType=(PRECEDING | FOLLOWING)  #boundedFrame
-    ;
-
-direction
-    : FROM (FIRST | LAST)
-    ;
-
-respectNulls
-    : RESPECT NULLS
     ;
 
 // ------------------------------------------- COMMON AST --------------------------------------------------------------
