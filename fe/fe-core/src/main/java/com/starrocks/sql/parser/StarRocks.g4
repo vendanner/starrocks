@@ -2058,7 +2058,7 @@ windowFunction
     | name = LAG '(' (expression ignoreNulls? (',' expression)*)? ')' ignoreNulls?
     | name = FIRST_VALUE '(' (expression ignoreNulls? (',' expression)*)? ')' ignoreNulls?
     | name = LAST_VALUE '(' (expression ignoreNulls? (',' expression)*)? ')' ignoreNulls?
-    | name = NTH_VALUE '(' (expression ',' INTEGER_VALUE) ')' (FROM direction =(FIRST | LAST))? (respect=(RESPECT | IGNORE) NULLS)?
+    | name = NTH_VALUE '(' (expression ',' INTEGER_VALUE) ')' (FROM direction =(FIRST | LAST))? (ignoreNulls | respectNulls)?
     ;
 
 whenClause
@@ -2075,6 +2075,10 @@ over
 
 ignoreNulls
     : IGNORE NULLS
+    ;
+
+respectNulls
+    :RESPECT NULLS
     ;
 
 windowFrame
