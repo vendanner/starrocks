@@ -5257,7 +5257,9 @@ public class AstBuilder extends StarRocksBaseVisitor<ParseNode> {
                 new FunctionParams(false, visit(context.expression(), Expr.class)), createPos(context));
         boolean ignoreNull = CollectionUtils.isNotEmpty(context.ignoreNulls())
                 && context.ignoreNulls().stream().anyMatch(Objects::nonNull);
+
         functionCallExpr.setIgnoreNulls(ignoreNull);
+        functionCallExpr.setAsc(getDirectionType(context.direction));
         return functionCallExpr;
     }
 
@@ -5274,6 +5276,14 @@ public class AstBuilder extends StarRocksBaseVisitor<ParseNode> {
                 (AnalyticWindow) visitIfPresent(context.windowFrame()),
                 context.bracketHint() == null ? null : context.bracketHint().identifier(0).getText(),
                 pos);
+    }
+
+    private static boolean getDirectionType(Token token) {
+        if (token == null) {
+            return true;
+        }
+
+        return token.getType() == StarRocksLexer.FIRST;
     }
 
     @Override
