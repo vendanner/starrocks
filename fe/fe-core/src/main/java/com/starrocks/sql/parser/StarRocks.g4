@@ -2058,7 +2058,7 @@ windowFunction
     | name = LAG '(' (expression ignoreNulls? (',' expression)*)? ')' ignoreNulls?
     | name = FIRST_VALUE '(' (expression ignoreNulls? (',' expression)*)? ')' ignoreNulls?
     | name = LAST_VALUE '(' (expression ignoreNulls? (',' expression)*)? ')' ignoreNulls?
-    | name = NTH_VALUE '(' (expression ',' INTEGER_VALUE) ')' (FROM direction =(FIRST | LAST))? (ignoreNulls | respectNulls)?
+    | name = NTH_VALUE '(' (expression ',' expression) ')' (FROM direction =(FIRST | LAST))? (ignoreNulls | respectNulls)?
     ;
 
 whenClause
@@ -2078,7 +2078,7 @@ ignoreNulls
     ;
 
 respectNulls
-    :RESPECT NULLS
+    : RESPECT NULLS
     ;
 
 windowFrame
@@ -2392,7 +2392,7 @@ nonReserved
     | JOB
     | LABEL | LAST | LESS | LEVEL | LIST | LOCAL | LOCATION | LOGICAL | LOW_PRIORITY | LOCK
     | MASKING | MANUAL | MAP | MATERIALIZED | MAX | META | MIN | MINUTE | MODE | MODIFY | MONTH | MERGE | MINUS
-    | NAME | NAMES | NEGATIVE | NO | NODE | NODES | NONE | NULLS | NUMBER | NUMERIC
+    | NAME | NAMES | NEGATIVE | NO | NODE | NODES | NONE | NULLS | NUMBER | NUMERIC | NTH_VALUE
     | OBSERVER | OF | OFFSET | ONLY | OPTIMIZER | OPEN | OPERATE | OPTION | OVERWRITE
     | PARTITIONS | PASSWORD | PATH | PAUSE | PERCENTILE_UNION | PLUGIN | PLUGINS | POLICY | POLICIES | PRECEDING | PROC
     | PROCESSLIST | PRIVILEGES | PROPERTIES | PROPERTY
