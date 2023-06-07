@@ -76,6 +76,8 @@ public class FunctionCallExpr extends Expr {
     // The slot SlotDescriptor nullable info will lost or change
     private boolean mergeAggFnHasNullableChild = true;
 
+    private  boolean isAsc = true;
+
     // TODO(yan): add more known functions which are monotonic.
     private static final ImmutableSet<String> MONOTONIC_FUNCTION_SET =
             new ImmutableSet.Builder<String>().add(FunctionSet.YEAR).build();
@@ -509,6 +511,14 @@ public class FunctionCallExpr extends Expr {
         } else {
             return this;
         }
+    }
+
+    public boolean isAsc() {
+        return isAsc;
+    }
+
+    public void setAsc(boolean asc) {
+        isAsc = asc;
     }
 
 }
