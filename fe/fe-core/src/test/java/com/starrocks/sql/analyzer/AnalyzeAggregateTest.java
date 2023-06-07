@@ -270,4 +270,10 @@ public class AnalyzeAggregateTest {
         analyzeSuccess("SELECT window_funnel(1, ta, 0, [true, true, false]) FROM tall");
     }
 
+    @Test
+    public void testWindowFunction() {
+        analyzeSuccess("SELECT NTH_VALUE(tc, 1) from last IGNORE NULLS over(partition by ta order by tg) FROM tall");
+        analyzeSuccess("SELECT FIRST_VALUE(tc) over(partition by ta order by tg) FROM tall");
+    }
+
 }
