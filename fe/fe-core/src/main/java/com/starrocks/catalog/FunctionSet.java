@@ -392,6 +392,7 @@ public class FunctionSet {
     public static final String RANK = "rank";
     public static final String NTILE = "ntile";
     public static final String ROW_NUMBER = "row_number";
+    public static final String NTH_VALUE = "nth_value";
 
     // Other functions:
     public static final String HLL_HASH = "hll_hash";
@@ -530,6 +531,7 @@ public class FunctionSet {
             .add(FunctionSet.FIRST_VALUE)
             .add(FunctionSet.LAST_VALUE)
             .add(FunctionSet.FIRST_VALUE_REWRITE)
+            .add(FunctionSet.NTH_VALUE)
             .build();
 
     public static final Set<String> VARIANCE_FUNCTIONS = ImmutableSet.<String>builder()
@@ -948,6 +950,8 @@ public class FunctionSet {
                     LAG, Lists.newArrayList(t, Type.BIGINT, t), t, t));
             addBuiltin(AggregateFunction.createAnalyticBuiltin(
                     LEAD, Lists.newArrayList(t, Type.BIGINT, t), t, t));
+            addBuiltin(AggregateFunction.createAnalyticBuiltin(
+                    NTH_VALUE, Lists.newArrayList(t, Type.BIGINT), t, t));
 
             // lead() and lag() the default offset and the default value should be
             // rewritten to call the overrides that take all parameters.

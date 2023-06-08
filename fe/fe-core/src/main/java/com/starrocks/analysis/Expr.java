@@ -194,6 +194,9 @@ public abstract class Expr extends TreeNode<Expr> implements ParseNode, Cloneabl
     // Ignore nulls.
     private boolean ignoreNulls = false;
 
+    // this defines the direction is whether from the beginning or the ending of the ordered list
+    private  boolean directionBegin = true;
+
     // Cached value of IsConstant(), set during analyze() and valid if isAnalyzed_ is true.
     private boolean isConstant_;
 
@@ -1428,6 +1431,14 @@ public abstract class Expr extends TreeNode<Expr> implements ParseNode, Cloneabl
 
     public List<String> getHints() {
         return hints;
+    }
+
+    public boolean getDirectionBegin() {
+        return directionBegin;
+    }
+
+    public void setDirectionBegin(boolean asc) {
+        this.directionBegin = asc;
     }
 
 }

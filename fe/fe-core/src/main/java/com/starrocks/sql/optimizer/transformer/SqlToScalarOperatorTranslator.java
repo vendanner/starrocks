@@ -700,6 +700,7 @@ public final class SqlToScalarOperatorTranslator {
                     new CallOperator(functionCallExpr.getFnName().getFunction(), functionCallExpr.getType(), arguments,
                             functionCallExpr.getFn(), functionCallExpr.getParams().isDistinct());
             callOperator.setIgnoreNulls(functionCallExpr.getIgnoreNulls());
+            callOperator.setDirectionBegin(functionCallExpr.getDirectionBegin());
             return callOperator;
         }
 

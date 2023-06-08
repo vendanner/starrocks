@@ -51,6 +51,8 @@ public class CallOperator extends ScalarOperator {
     // Ignore nulls.
     private boolean ignoreNulls = false;
 
+    private  boolean directionBegin = true;
+
     public CallOperator(String fnName, Type returnType, List<ScalarOperator> arguments) {
         this(fnName, returnType, arguments, null);
     }
@@ -74,6 +76,14 @@ public class CallOperator extends ScalarOperator {
 
     public boolean getIgnoreNulls() {
         return ignoreNulls;
+    }
+
+    public boolean getDirectionBegin() {
+        return directionBegin;
+    }
+
+    public void setDirectionBegin(boolean directionBegin) {
+        this.directionBegin = directionBegin;
     }
 
     public String getFnName() {

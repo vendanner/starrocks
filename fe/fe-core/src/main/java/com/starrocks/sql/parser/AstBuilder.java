@@ -5259,7 +5259,7 @@ public class AstBuilder extends StarRocksBaseVisitor<ParseNode> {
                 && context.ignoreNulls().stream().anyMatch(Objects::nonNull);
 
         functionCallExpr.setIgnoreNulls(ignoreNull);
-        functionCallExpr.setAsc(getDirectionType(context.direction));
+        functionCallExpr.setDirectionBegin(getDirectionType(context.direction));
         return functionCallExpr;
     }
 

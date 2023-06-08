@@ -109,9 +109,22 @@ public class AnalyticAnalyzer {
             }
         }
 
+        // NTH_VALUE(col, nth) nth必须是正整数
+        if (isNthAggFn(analyticFunction.getFn())) {
+            Expr nth = analyticFunction.getChild(1);
+            if (!isPositiveConstantInteger(nth)) {
+                throw new SemanticException(
+                        "The nth parameter of NTH_VALUE must be a constant positive integer: " +
+                                analyticFunction.toSql(), nth.getPos());
+            }
+        }
+
+        // 判断不允许有窗口(rows between) 语法的 函数，是否包含窗口
+        // 为何要判断？ 因为所有窗口函数共用windowFunction 和 over
+        // 那么在parse时，是能正常通过，但这不合法的(analyzer 校验不应该通过)，例如lead
         if (analyticExpr.getWindow() != null) {
             if ((isRankingFn(analyticFunction.getFn()) || isOffsetFn(analyticFunction.getFn()) ||
-                    isHllAggFn(analyticFunction.getFn()))) {
+                    isHllAggFn(analyticFunction.getFn())) || isNthAggFn(analyticFunction.getFn())) {
                 throw new SemanticException("Windowing clause not allowed with '" + analyticFunction.toSql() + "'",
                         analyticExpr.getPos());
             }
@@ -345,5 +358,13 @@ public class AnalyticAnalyzer {
         }
 
         return fn.functionName().equalsIgnoreCase(AnalyticExpr.HLL_UNION_AGG);
+    }
+
+    private static boolean isNthAggFn(Function fn) {
+        if (!isAnalyticFn(fn)) {
+            return false;
+        }
+
+        return fn.functionName().equalsIgnoreCase(AnalyticExpr.NTH_VALUE);
     }
 }

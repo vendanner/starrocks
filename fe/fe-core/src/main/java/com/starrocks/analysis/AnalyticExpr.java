@@ -96,6 +96,7 @@ public class AnalyticExpr extends Expr {
     public static String LASTVALUE = "LAST_VALUE";
     public static String RANK = "RANK";
     public static String DENSERANK = "DENSE_RANK";
+    public static String NTH_VALUE = "NTH_VALUE";
     public static String ROWNUMBER = "ROW_NUMBER";
     public static String NTILE = "NTILE";
     public static String MIN = "MIN";
@@ -137,7 +138,8 @@ public class AnalyticExpr extends Expr {
             this.useHashBasedPartition = false;
             Preconditions.checkState(false, "partition by hint can only be 'sort' or 'hash'");
         }
-
+        // analyzer 时会去binder 具体列
+        // 包含函数用到的所有列
         setChildren();
     }
 
