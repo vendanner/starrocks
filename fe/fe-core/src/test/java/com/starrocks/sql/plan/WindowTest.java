@@ -642,6 +642,32 @@ public class WindowTest extends PlanTestBase {
     }
 
     @Test
+    public void testNthValueWindowFunction() throws Exception {
+        String sql = "SELECT NTH_VALUE(tc, -1) from last IGNORE NULLS over(partition by ta order by tg) FROM tall";
+        starRocksAssert.query(sql)
+                .analysisError("The nth parameter of NTH_VALUE must be a constant positive integer");
+
+        sql = "SELECT NTH_VALUE(tc, 1.1) from last IGNORE NULLS over(partition by ta order by tg) FROM tall";
+        starRocksAssert.query(sql)
+                .analysisError("The nth parameter of NTH_VALUE must be a constant positive integer");
+
+        sql = "SELECT NTH_VALUE(tc, 1) " +
+                "from last IGNORE NULLS over(partition by ta order by tg rows between 1 preceding and 1 following) " +
+                "FROM tall";
+        starRocksAssert.query(sql)
+                .analysisError("Windowing clause not allowed with");
+
+        // Normal case
+        sql = "SELECT NTH_VALUE(tc, 1) from last IGNORE NULLS over(partition by ta order by tg) FROM tall";
+        String plan = getFragmentPlan(sql);
+        assertContains(plan, "  2:ANALYTIC\n" +
+                "  |  functions: [, nth_value(3: tc, 1), ]\n" +
+                "  |  partition by: 1: ta\n" +
+                "  |  order by: 7: tg ASC\n" +
+                "  |  window: RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW");
+    }
+
+    @Test
     public void testRuntimeFilterPushWithoutPartition() throws Exception {
         String sql = "select * from " +
                 "(select v1, sum(v2) over (order by v2 desc) as sum1 from t0) a," +
